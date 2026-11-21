@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dubai Smart Property Explorer | CS333 Assignment 3 · Revised Layout</title>
+<style>
+  :root { color-scheme:light; --ink:#172a40; --line:#dde5ed; --muted:#57697c; --bg:#f4f7fb; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.45 system-ui,-apple-system,Segoe UI,sans-serif; }
+  main { width:100%; padding:16px 20px 30px; }
+  .top { background:#fff; border:1px solid var(--line); border-radius:16px; padding:20px 24px;
+         margin-bottom:14px; box-shadow:0 3px 12px #21344d10; }
+  h1 { font-size:27px; margin:0 0 5px; }
+  .lead { color:var(--muted); font-size:14px; margin:0 0 15px; }
+  .filter-head { font-size:13px; text-transform:uppercase; letter-spacing:.08em; font-weight:700; color:var(--muted); margin:8px 0 6px; }
+  #filters { display:flex; align-items:center; flex-wrap:wrap; gap:12px 28px; }
+  #filters .vega-bind { display:inline-flex; align-items:center; gap:8px; margin:2px 0; font-size:14px; font-weight:600; }
+  #filters select { font:inherit; border:1px solid #b7c8d9; border-radius:8px; background:white; color:var(--ink); padding:9px 12px; min-width:180px; }
+  .instructions { margin:12px 0 0; padding-left:20px; font-size:13px; color:var(--muted); }
+  .instructions li { margin:2px 0; }
+  .chart-shell { width:100%; background:white; border:1px solid var(--line); border-radius:16px;
+                 padding:18px 18px 22px; overflow-x:auto; box-shadow:0 3px 12px #21344d10; }
+  #vis { width:100%; min-height:300px; }
+  #vis .vega-embed { display:inline-block; max-width:none; }
+  .loading { color:var(--muted); padding:24px; }
+  .foot { color:var(--muted); font-size:13px; margin-top:16px; }
+  summary { cursor:pointer; font-weight:650; margin:9px 0; }
+  pre { white-space:pre; overflow:auto; max-height:360px; padding:14px; background:#edf2f7; border-radius:10px; font-size:12px; }
+  @media(max-width:700px) { main { padding:10px; } h1 { font-size:21px; } .top, .chart-shell { padding:14px; } }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/vega@6"></script>
+<script src="https://cdn.jsdelivr.net/npm/vega-lite@6"></script>
+<script src="https://cdn.jsdelivr.net/npm/vega-embed@7"></script>
+</head>
+<body>
+<main>
+  <header class="top">
+    <h1>Dubai Smart Property Explorer</h1>
+    <p class="lead">CS333 · Part 3: Interactive Visualization · Dubai sales of units and villas, January 2015 to July 2026</p>
+    <div class="filter-head">Dashboard Filters</div>
+    <div id="filters" aria-label="Property data filters"></div>
+    <ul class="instructions">
+      <li><b>Dropdowns:</b> choose the property type and the registration type. Every chart updates.</li>
+      <li><b>Map:</b> click a colored community to filter the other charts; double-click to reset. Grey can mean fewer than 20 eligible sales, no data, or unmatched community codes.</li>
+      <li><b>Scatter:</b> drag horizontally to select a size range (m²). The map, timeline, box plot and heatmap update. Double-click to reset.</li>
+      <li><b>Timeline:</b> compares quarterly median prices for Existing and Off-Plan properties. Drag to select a period; double-click to reset.</li>
+      <li>Hover over any mark for details. Drag updates are rate-limited for smoother interaction; calculations still use all eligible sales. Prices are per m² sale prices, not investment returns.</li>
+      <li>If a selection leaves no matching sales, double-click the interactive charts to reset their selections.</li>
+    </ul>
+  </header>
+  <section class="chart-shell" aria-label="Interactive Vega-Lite dashboard">
+    <div id="vis"><div class="loading">Loading interactive visualizations…</div></div>
+  </section>
+  <div class="foot">Sources: CS333 course 10% sample of Dubai Land Department transactions (transactions.csv) and community boundaries (dubai.geojson), joined on comm_num = COMM_NUM. Uncolored/grey communities may have fewer than 20 eligible sales, no recorded sales, or unmatched community IDs. Only valid sales of units and villas are used (see the data-quality notes in the submission). The scatter shows a sample of up to 5,000 points; every other view uses all filtered sales. Requires internet to load the Vega libraries and the data.</div>
+  <details><summary>View Vega-Lite source code (JSON)</summary><pre id="source"></pre></details>
+</main>
+<script id="vega-spec" type="application/json">{"$schema":"https://vega.github.io/schema/vega-lite/v6.json","title":{"text":"Dubai Smart Property Explorer","subtitle":"Dubai Sales | Units & Villas | Jan 2015 – Jul 2026 | Interactive analysis by location, time and property size","fontSize":26,"subtitleFontSize":15,"anchor":"start"},"params":[{"name":"propertyFilter","value":"All","bind":{"input":"select","options":["All","Unit","Villa"],"labels":["All types","Units","Villas"],"name":"Property type: "}},{"name":"registrationFilter","value":"All","bind":{"input":"select","options":["All","Existing Properties","Off-Plan Properties"],"labels":["All registrations","Existing","Off-Plan"],"name":"Registration: "}}],"data":{"url":"https://raw.githubusercontent.com/sharios/CS333/main/2026-27/Part%202/transactions.csv","format":{"type":"csv","parse":{"instance_date":"date:'%Y-%m-%d'","procedure_area":"number","meter_sale_price":"number","comm_num":"string"}}},"transform":[{"filter":"datum.trans_group_en === 'Sales'"},{"filter":"datum.property_type_en === 'Unit' || datum.property_type_en === 'Villa'"},{"filter":"datum.reg_type_en === 'Existing Properties' || datum.reg_type_en === 'Off-Plan Properties'"},{"calculate":"datum.procedure_area","as":"area_sqm"},{"calculate":"datum.meter_sale_price","as":"price_sqm"},{"calculate":"datum.instance_date","as":"transaction_date"},{"filter":"isValid(datum.area_sqm) && isValid(datum.price_sqm) && isFinite(datum.area_sqm) && isFinite(datum.price_sqm) && datum.area_sqm > 0 && datum.price_sqm > 0"},{"filter":"isValid(datum.transaction_date) && datum.transaction_date >= datetime(2015, 0, 1) && datum.transaction_date < datetime(2026, 7, 1)"},{"filter":"datum.area_sqm >= 20 && datum.area_sqm <= 1000 && datum.price_sqm >= 1000 && datum.price_sqm <= 60000"},{"filter":"propertyFilter === 'All' || datum.property_type_en === propertyFilter"},{"filter":"registrationFilter === 'All' || datum.reg_type_en === registrationFilter"}],"vconcat":[{"hconcat":[{"title":{"text":"Where is it expensive? Median Price per m² by Community","subtitle":"Click colored community to filter all views | Grey = insufficient / unmatched data | Double-click to reset"},"width":520,"height":400,"projection":{"type":"mercator"},"layer":[{"data":{"url":"https://raw.githubusercontent.com/sharios/CS333/main/2026-27/Part%202/dubai.geojson","format":{"type":"json","property":"features"}},"mark":{"type":"geoshape","fill":"#e5e7eb","stroke":"white","strokeWidth":0.5}},{"transform":[{"filter":{"param":"brush","empty":true}},{"filter":{"param":"timeBrush","empty":true}},{"aggregate":[{"op":"median","field":"price_sqm","as":"median_price"},{"op":"count","as":"transaction_count"}],"groupby":["comm_num"]},{"filter":"datum.transaction_count >= 20"},{"lookup":"comm_num","from":{"data":{"url":"https://raw.githubusercontent.com/sharios/CS333/main/2026-27/Part%202/dubai.geojson","format":{"type":"json","property":"features"}},"key":"properties.COMM_NUM"},"as":"geo"},{"filter":"isValid(datum.geo)"},{"calculate":"datum.geo.properties.CNAME_E","as":"community_name"}],"params":[{"name":"commSelect","select":{"type":"point","fields":["comm_num"],"on":"click","clear":"dblclick"}}],"mark":{"type":"geoshape","stroke":"white","cursor":"pointer"},"encoding":{"shape":{"field":"geo","type":"geojson"},"color":{"field":"median_price","type":"quantitative","title":"Median AED/m²","scale":{"scheme":"yelloworangered","domain":[1000,60000],"clamp":true},"legend":{"orient":"bottom","format":",.0f","gradientLength":260}},"strokeWidth":{"condition":{"param":"commSelect","empty":false,"value":2.5},"value":0.5},"opacity":{"condition":{"param":"commSelect","value":1},"value":0.35},"tooltip":[{"field":"community_name","type":"nominal","title":"Community"},{"field":"comm_num","type":"nominal","title":"Community no."},{"field":"median_price","type":"quantitative","title":"Median AED/m²","format":",.0f"},{"field":"transaction_count","type":"quantitative","title":"Sales","format":","}]}}]},{"title":{"text":"Property Size vs Price per m²","subtitle":"Display sample up to 5,000 sales | Drag to select a size range | Double-click to reset"},"width":620,"height":400,"transform":[{"filter":{"param":"commSelect","empty":true}},{"filter":{"param":"timeBrush","empty":true}},{"sample":5000}],"params":[{"name":"brush","select":{"type":"interval","encodings":["x"],"clear":"dblclick","on":"[pointerdown, window:pointerup] > window:pointermove{150}","translate":false,"zoom":false}}],"mark":{"type":"circle","opacity":0.35,"size":40},"encoding":{"x":{"field":"area_sqm","type":"quantitative","title":"Property Area (m²)","scale":{"domain":[0,1000]}},"y":{"field":"price_sqm","type":"quantitative","title":"Price per m² (AED)","scale":{"domain":[0,60000]},"axis":{"format":",.0f"}},"color":{"field":"reg_type_en","type":"nominal","title":"Registration Type","scale":{"domain":["Existing Properties","Off-Plan Properties"],"range":["#2563eb","#f97316"]},"legend":{"orient":"top","title":null}},"tooltip":[{"field":"area_name_en","type":"nominal","title":"Area"},{"field":"property_type_en","type":"nominal","title":"Property Type"},{"field":"rooms_en","type":"nominal","title":"Rooms"},{"field":"reg_type_en","type":"nominal","title":"Registration Type"},{"field":"transaction_date","type":"temporal","title":"Date","format":"%d %b %Y"},{"field":"area_sqm","type":"quantitative","title":"Area (m²)","format":",.1f"},{"field":"price_sqm","type":"quantitative","title":"Price (AED/m²)","format":",.0f"}]}}],"spacing":26},{"title":{"text":"When? Quarterly Median Price per m² — Existing vs Off-Plan","subtitle":"Quarterly median AED/m² for Existing and Off-Plan | Drag to filter by date | Double-click to reset"},"width":1180,"height":230,"transform":[{"filter":{"param":"commSelect","empty":true}},{"filter":{"param":"brush","empty":true}}],"params":[{"name":"timeBrush","select":{"type":"interval","encodings":["x"],"clear":"dblclick","on":"[pointerdown, window:pointerup] > window:pointermove{150}","translate":false,"zoom":false}}],"mark":{"type":"line","point":{"size":30},"strokeWidth":2.5,"interpolate":"monotone"},"encoding":{"x":{"field":"transaction_date","timeUnit":"yearquarter","type":"temporal","title":"Quarter","axis":{"format":"%Y","tickCount":"year"},"scale":{"domain":["2015-01-01T00:00:00","2026-08-01T00:00:00"]}},"y":{"aggregate":"median","field":"price_sqm","type":"quantitative","title":"Median AED/m²","axis":{"format":",.0f"},"scale":{"domainMin":0,"domainMax":30000,"nice":true}},"color":{"field":"reg_type_en","type":"nominal","title":null,"scale":{"domain":["Existing Properties","Off-Plan Properties"],"range":["#2563eb","#f97316"]},"legend":{"orient":"top"}},"tooltip":[{"field":"transaction_date","timeUnit":"yearquarter","type":"temporal","title":"Quarter","format":"%Y Q%q"},{"field":"reg_type_en","type":"nominal","title":"Registration Type"},{"aggregate":"median","field":"price_sqm","type":"quantitative","title":"Median AED/m²","format":",.0f"},{"aggregate":"count","type":"quantitative","title":"Sales","format":","}]}},{"hconcat":[{"title":{"text":"Price Distribution by Registration Type","subtitle":"Box: Q1–Q3 | Median line | Whiskers: 1.5 × IQR | Outliers hidden"},"width":420,"height":300,"transform":[{"filter":{"param":"brush","empty":true}},{"filter":{"param":"commSelect","empty":true}},{"filter":{"param":"timeBrush","empty":true}}],"layer":[{"mark":{"type":"boxplot","extent":1.5,"outliers":false,"size":80,"median":{"color":"#111827","strokeWidth":3}},"encoding":{"x":{"field":"reg_type_en","type":"nominal","title":null,"scale":{"domain":["Existing Properties","Off-Plan Properties"]},"axis":{"labelAngle":0,"labelLimit":220}},"y":{"field":"price_sqm","type":"quantitative","title":"Price per m² (AED)","scale":{"domain":[0,60000]},"axis":{"format":",.0f"}},"color":{"field":"reg_type_en","type":"nominal","legend":null,"scale":{"domain":["Existing Properties","Off-Plan Properties"],"range":["#2563eb","#f97316"]}}}},{"transform":[{"aggregate":[{"op":"median","field":"price_sqm","as":"median_price"}],"groupby":["reg_type_en"]},{"calculate":"datum.reg_type_en === 'Existing Properties' ? datum.median_price : null","as":"existing_value"},{"calculate":"datum.reg_type_en === 'Off-Plan Properties' ? datum.median_price : null","as":"offplan_value"},{"aggregate":[{"op":"max","field":"existing_value","as":"existing_median"},{"op":"max","field":"offplan_value","as":"offplan_median"}]},{"calculate":"isValid(datum.existing_median) && isValid(datum.offplan_median) && datum.existing_median > 0 ? 100 * (datum.offplan_median - datum.existing_median) / datum.existing_median : null","as":"gap_pct"},{"calculate":"isValid(datum.gap_pct) ? 'Off-Plan gap: ' + format(datum.gap_pct, '+.1f') + '%' : 'Both groups needed to compare'","as":"comparison_label"}],"mark":{"type":"text","align":"right","baseline":"top","fontSize":13,"fontWeight":"bold","color":"#263849"},"encoding":{"x":{"value":{"expr":"width - 12"}},"y":{"value":18},"text":{"field":"comparison_label","type":"nominal"}}}]},{"title":{"text":"Median Price Heatmap by Size and Type","subtitle":"100 m² size bands | Cells with fewer than 5 sales are hidden"},"width":680,"height":300,"transform":[{"filter":{"param":"brush","empty":true}},{"filter":{"param":"commSelect","empty":true}},{"filter":{"param":"timeBrush","empty":true}},{"bin":{"step":100,"extent":[0,1000]},"field":"area_sqm","as":["area_start","area_end"]},{"aggregate":[{"op":"median","field":"price_sqm","as":"median_price"},{"op":"count","as":"transaction_count"}],"groupby":["property_type_en","area_start","area_end"]},{"filter":"datum.transaction_count >= 5"}],"mark":{"type":"rect","stroke":"white","strokeWidth":3},"encoding":{"x":{"field":"area_start","type":"quantitative","title":"Property Area Range (m²)","scale":{"domain":[0,1000]}},"x2":{"field":"area_end"},"y":{"field":"property_type_en","type":"nominal","title":null,"scale":{"domain":["Unit","Villa"]}},"color":{"field":"median_price","type":"quantitative","title":"Median AED/m²","scale":{"type":"threshold","domain":[8000,12000,16000,22000,35000],"range":["#2CA58D","#6FCF97","#F2C94C","#F2994A","#EB5757","#8E44AD"]},"legend":{"orient":"bottom","format":",.0f","direction":"horizontal"}},"tooltip":[{"field":"property_type_en","type":"nominal","title":"Property Type"},{"field":"area_start","type":"quantitative","title":"Area From (m²)","format":",.0f"},{"field":"area_end","type":"quantitative","title":"Area To (m²)","format":",.0f"},{"field":"transaction_count","type":"quantitative","title":"Sales","format":","},{"field":"median_price","type":"quantitative","title":"Median AED/m²","format":",.0f"}]}}],"spacing":26}],"spacing":40,"resolve":{"scale":{"color":"independent"},"legend":{"color":"independent"}},"config":{"background":"white","view":{"stroke":null},"concat":{"spacing":50},"axis":{"labelFontSize":13,"titleFontSize":15,"gridColor":"#e5e7eb","labelPadding":6,"titlePadding":10},"legend":{"labelFontSize":13,"titleFontSize":13},"title":{"fontSize":18,"subtitleFontSize":13,"color":"#1f2937","anchor":"start"}}}</script>
+<script>
+(function () {
+  'use strict';
+  const originalSpec = JSON.parse(document.querySelector('#vega-spec').textContent);
+  document.querySelector('#source').textContent = JSON.stringify(originalSpec, null, 2);
+  const shell = document.querySelector('.chart-shell');
+  const filterHost = document.querySelector('#filters');
+  let current = null, lastWidth = -1, renderSeq = 0, resizeHandle;
+
+  function availableWidth() {
+    const css = window.getComputedStyle(shell);
+    return shell.getBoundingClientRect().width - parseFloat(css.paddingLeft) - parseFloat(css.paddingRight);
+  }
+
+  // Conservative plot width: leave room for labels, legends, axes and spacing.
+  // This prevents the right-hand scatter x-axis from being cut off on laptop screens.
+  function applyWidths(spec, avail) {
+    const [row1, row2, row3] = spec.vconcat;
+    const pairTotal = Math.max(760, Math.floor(avail - 355));
+    const leftMapWidth = Math.floor(pairTotal * 0.43);
+    const leftBoxWidth = Math.floor(pairTotal * 0.39);
+    row1.hconcat[0].width = leftMapWidth;
+    row1.hconcat[1].width = pairTotal - leftMapWidth;
+    row2.width = Math.max(760, Math.floor(avail - 140));
+    // Keep the box plot as one layered chart; dynamic short gap label sits in the upper right.
+    row3.hconcat[0].width = leftBoxWidth;
+    row3.hconcat[1].width = pairTotal - leftBoxWidth;
+  }
+
+  async function render() {
+    const avail = availableWidth();
+    if (current && Math.abs(avail - lastWidth) < 12) return;
+    const ticket = ++renderSeq;
+    const nextSpec = JSON.parse(JSON.stringify(originalSpec));
+    applyWidths(nextSpec, avail);
+
+    // On resize keep the dropdown choices (selections on the charts are reset).
+    if (current && current.view) {
+      try {
+        nextSpec.params[0].value = current.view.signal('propertyFilter');
+        nextSpec.params[1].value = current.view.signal('registrationFilter');
+      } catch (e) { console.warn('Could not restore filter choices:', e); }
+      if (typeof current.finalize === 'function') current.finalize();
+    }
+    filterHost.replaceChildren();
+    const vis = document.querySelector('#vis');
+    vis.replaceChildren();
+    try {
+      const result = await vegaEmbed(vis, nextSpec, {
+        renderer: 'canvas',
+        bind: filterHost,
+        actions: { source: true, editor: true, export: true, compiled: false }
+      });
+      if (ticket !== renderSeq) { result.finalize(); return; }
+      current = result;
+      lastWidth = avail;
+    } catch (error) {
+      console.error(error);
+      vis.textContent = 'Could not load the dashboard. Please check your internet connection and the browser console.';
+    }
+  }
+
+  window.addEventListener('resize', () => {
+    window.clearTimeout(resizeHandle);
+    resizeHandle = window.setTimeout(render, 300);
+  });
+  window.requestAnimationFrame(render);
+})();
+</script>
+</body>
+</html>
