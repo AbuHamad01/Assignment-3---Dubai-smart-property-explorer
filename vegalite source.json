@@ -1,0 +1,1051 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.json",
+  "title": {
+    "text": "Dubai Smart Property Explorer",
+    "subtitle": "Dubai Sales | Units & Villas | Jan 2015–Jul 2026 | Interactive buyer comparison",
+    "fontSize": 26,
+    "subtitleFontSize": 15,
+    "anchor": "start"
+  },
+  "params": [
+    {
+      "name": "propertyFilter",
+      "value": "All",
+      "bind": {
+        "input": "select",
+        "options": [
+          "All",
+          "Unit",
+          "Villa"
+        ],
+        "labels": [
+          "All types",
+          "Units",
+          "Villas"
+        ],
+        "name": "Property type: "
+      }
+    },
+    {
+      "name": "registrationFilter",
+      "value": "All",
+      "bind": {
+        "input": "select",
+        "options": [
+          "All",
+          "Existing Properties",
+          "Off-Plan Properties"
+        ],
+        "labels": [
+          "All registrations",
+          "Existing",
+          "Off-Plan"
+        ],
+        "name": "Registration: "
+      }
+    }
+  ],
+  "data": {
+    "url": "https://raw.githubusercontent.com/sharios/CS333/main/2026-27/Part%202/transactions.csv",
+    "format": {
+      "type": "csv"
+    }
+  },
+  "transform": [
+    {
+      "filter": "datum.trans_group_en === 'Sales'"
+    },
+    {
+      "filter": "datum.property_type_en === 'Unit' || datum.property_type_en === 'Villa'"
+    },
+    {
+      "filter": "datum.reg_type_en === 'Existing Properties' || datum.reg_type_en === 'Off-Plan Properties'"
+    },
+    {
+      "calculate": "toNumber(datum.procedure_area)",
+      "as": "area_sqm"
+    },
+    {
+      "calculate": "toNumber(datum.meter_sale_price)",
+      "as": "price_sqm"
+    },
+    {
+      "calculate": "timeParse(datum.instance_date, '%Y-%m-%d')",
+      "as": "transaction_date"
+    },
+    {
+      "filter": "isValid(datum.area_sqm) && isValid(datum.price_sqm) && isFinite(datum.area_sqm) && isFinite(datum.price_sqm) && datum.area_sqm > 0 && datum.price_sqm > 0"
+    },
+    {
+      "filter": "isValid(datum.transaction_date) && datum.transaction_date >= datetime(2015, 0, 1) && datum.transaction_date < datetime(2026, 7, 1)"
+    },
+    {
+      "filter": "datum.area_sqm >= 20 && datum.area_sqm <= 1000 && datum.price_sqm >= 1000 && datum.price_sqm <= 60000"
+    },
+    {
+      "filter": "propertyFilter === 'All' || datum.property_type_en === propertyFilter"
+    },
+    {
+      "filter": "registrationFilter === 'All' || datum.reg_type_en === registrationFilter"
+    }
+  ],
+  "vconcat": [
+    {
+      "title": {
+        "text": "Property Size vs Price per Square Metre",
+        "subtitle": "Display sample: up to 8,000 transactions | Drag to select a size range"
+      },
+      "width": 1150,
+      "height": 370,
+      "transform": [
+        {
+          "sample": 8000
+        }
+      ],
+      "params": [
+        {
+          "name": "brush",
+          "select": {
+            "type": "interval",
+            "encodings": [
+              "x"
+            ],
+            "clear": "dblclick"
+          }
+        }
+      ],
+      "mark": {
+        "type": "circle",
+        "opacity": 0.35,
+        "size": 48
+      },
+      "encoding": {
+        "x": {
+          "field": "area_sqm",
+          "type": "quantitative",
+          "title": "Property Area (m²)",
+          "scale": {
+            "domain": [
+              0,
+              1000
+            ]
+          }
+        },
+        "y": {
+          "field": "price_sqm",
+          "type": "quantitative",
+          "title": "Price per m² (AED)",
+          "scale": {
+            "domain": [
+              0,
+              60000
+            ]
+          }
+        },
+        "color": {
+          "field": "reg_type_en",
+          "type": "nominal",
+          "title": "Registration Type",
+          "scale": {
+            "domain": [
+              "Existing Properties",
+              "Off-Plan Properties"
+            ],
+            "range": [
+              "#2563eb",
+              "#f97316"
+            ]
+          }
+        },
+        "tooltip": [
+          {
+            "field": "property_type_en",
+            "type": "nominal",
+            "title": "Property Type"
+          },
+          {
+            "field": "reg_type_en",
+            "type": "nominal",
+            "title": "Registration Type"
+          },
+          {
+            "field": "area_sqm",
+            "type": "quantitative",
+            "title": "Area (m²)",
+            "format": ",.2f"
+          },
+          {
+            "field": "price_sqm",
+            "type": "quantitative",
+            "title": "Price (AED/m²)",
+            "format": ",.2f"
+          }
+        ]
+      }
+    },
+    {
+      "title": {
+        "text": "Interactive Price Distribution by Registration Type",
+        "subtitle": "Q1, median, Q3 and min-to-max range | Updates with filters and brush"
+      },
+      "width": 1150,
+      "height": 300,
+      "transform": [
+        {
+          "filter": {
+            "param": "brush",
+            "empty": true
+          }
+        },
+        {
+          "aggregate": [
+            {
+              "op": "q1",
+              "field": "price_sqm",
+              "as": "q1"
+            },
+            {
+              "op": "median",
+              "field": "price_sqm",
+              "as": "median"
+            },
+            {
+              "op": "q3",
+              "field": "price_sqm",
+              "as": "q3"
+            },
+            {
+              "op": "min",
+              "field": "price_sqm",
+              "as": "minimum"
+            },
+            {
+              "op": "max",
+              "field": "price_sqm",
+              "as": "maximum"
+            },
+            {
+              "op": "count",
+              "as": "property_count"
+            }
+          ],
+          "groupby": [
+            "reg_type_en"
+          ]
+        },
+        {
+          "filter": "datum.property_count > 0"
+        }
+      ],
+      "encoding": {
+        "x": {
+          "field": "reg_type_en",
+          "type": "nominal",
+          "title": "Registration Type",
+          "scale": {
+            "domain": [
+              "Existing Properties",
+              "Off-Plan Properties"
+            ],
+            "paddingInner": 0.5,
+            "paddingOuter": 0.3
+          },
+          "axis": {
+            "labelAngle": 0,
+            "labelLimit": 220
+          }
+        }
+      },
+      "layer": [
+        {
+          "mark": {
+            "type": "rule",
+            "color": "#475569",
+            "strokeWidth": 2
+          },
+          "encoding": {
+            "y": {
+              "field": "minimum",
+              "type": "quantitative",
+              "title": "Price per m² (AED)",
+              "scale": {
+                "domain": [
+                  0,
+                  60000
+                ]
+              }
+            },
+            "y2": {
+              "field": "maximum"
+            }
+          }
+        },
+        {
+          "mark": {
+            "type": "bar",
+            "size": 115,
+            "opacity": 0.85
+          },
+          "encoding": {
+            "y": {
+              "field": "q3",
+              "type": "quantitative",
+              "title": "Price per m² (AED)",
+              "scale": {
+                "domain": [
+                  0,
+                  60000
+                ]
+              }
+            },
+            "y2": {
+              "field": "q1"
+            },
+            "color": {
+              "field": "reg_type_en",
+              "type": "nominal",
+              "legend": null,
+              "scale": {
+                "domain": [
+                  "Existing Properties",
+                  "Off-Plan Properties"
+                ],
+                "range": [
+                  "#2563eb",
+                  "#f97316"
+                ]
+              }
+            },
+            "tooltip": [
+              {
+                "field": "reg_type_en",
+                "type": "nominal",
+                "title": "Registration Type"
+              },
+              {
+                "field": "property_count",
+                "type": "quantitative",
+                "title": "Transactions",
+                "format": ","
+              },
+              {
+                "field": "q1",
+                "type": "quantitative",
+                "title": "Q1",
+                "format": ",.0f"
+              },
+              {
+                "field": "median",
+                "type": "quantitative",
+                "title": "Median",
+                "format": ",.0f"
+              },
+              {
+                "field": "q3",
+                "type": "quantitative",
+                "title": "Q3",
+                "format": ",.0f"
+              }
+            ]
+          }
+        },
+        {
+          "mark": {
+            "type": "tick",
+            "color": "#111827",
+            "size": 115,
+            "thickness": 3
+          },
+          "encoding": {
+            "y": {
+              "field": "median",
+              "type": "quantitative",
+              "title": "Price per m² (AED)",
+              "scale": {
+                "domain": [
+                  0,
+                  60000
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": {
+        "text": "Property Price Heatmap by Size and Type",
+        "subtitle": "Six discrete price bands; minimum five transactions per cell"
+      },
+      "width": 1150,
+      "height": 230,
+      "transform": [
+        {
+          "filter": {
+            "param": "brush",
+            "empty": true
+          }
+        },
+        {
+          "bin": {
+            "step": 100,
+            "extent": [
+              0,
+              1000
+            ]
+          },
+          "field": "area_sqm",
+          "as": [
+            "area_start",
+            "area_end"
+          ]
+        },
+        {
+          "aggregate": [
+            {
+              "op": "median",
+              "field": "price_sqm",
+              "as": "median_price"
+            },
+            {
+              "op": "count",
+              "as": "transaction_count"
+            }
+          ],
+          "groupby": [
+            "property_type_en",
+            "area_start",
+            "area_end"
+          ]
+        },
+        {
+          "filter": "datum.transaction_count >= 5"
+        }
+      ],
+      "mark": {
+        "type": "rect",
+        "stroke": "white",
+        "strokeWidth": 3
+      },
+      "encoding": {
+        "x": {
+          "field": "area_start",
+          "type": "quantitative",
+          "title": "Property Area Range (m²)",
+          "scale": {
+            "domain": [
+              0,
+              1000
+            ]
+          }
+        },
+        "x2": {
+          "field": "area_end"
+        },
+        "y": {
+          "field": "property_type_en",
+          "type": "nominal",
+          "title": "Property Type",
+          "sort": [
+            "Unit",
+            "Villa"
+          ],
+          "scale": {
+            "domain": [
+              "Unit",
+              "Villa"
+            ]
+          }
+        },
+        "color": {
+          "field": "median_price",
+          "type": "quantitative",
+          "title": "Median AED/m²",
+          "scale": {
+            "type": "threshold",
+            "domain": [
+              8000,
+              12000,
+              16000,
+              22000,
+              35000
+            ],
+            "range": [
+              "#2CA58D",
+              "#6FCF97",
+              "#F2C94C",
+              "#F2994A",
+              "#EB5757",
+              "#8E44AD"
+            ]
+          },
+          "legend": {
+            "title": "Median AED/m²",
+            "format": ",.0f",
+            "orient": "right",
+            "labelFontSize": 13,
+            "titleFontSize": 14
+          }
+        },
+        "tooltip": [
+          {
+            "field": "property_type_en",
+            "type": "nominal",
+            "title": "Property Type"
+          },
+          {
+            "field": "area_start",
+            "type": "quantitative",
+            "title": "Area From (m²)",
+            "format": ",.0f"
+          },
+          {
+            "field": "area_end",
+            "type": "quantitative",
+            "title": "Area To (m²)",
+            "format": ",.0f"
+          },
+          {
+            "field": "transaction_count",
+            "type": "quantitative",
+            "title": "Transactions",
+            "format": ","
+          },
+          {
+            "field": "median_price",
+            "type": "quantitative",
+            "title": "Median AED/m²",
+            "format": ",.0f"
+          }
+        ]
+      }
+    },
+    {
+      "title": {
+        "text": "Smart Median Price Gap — Slope Comparison",
+        "subtitle": "Existing and Off-Plan on separate rows | Median AED/m² and percentage price gap"
+      },
+      "width": 1150,
+      "height": 250,
+      "transform": [
+        {
+          "filter": {
+            "param": "brush",
+            "empty": true
+          }
+        },
+        {
+          "aggregate": [
+            {
+              "op": "median",
+              "field": "price_sqm",
+              "as": "median_price"
+            },
+            {
+              "op": "count",
+              "as": "transaction_count"
+            }
+          ],
+          "groupby": [
+            "reg_type_en"
+          ]
+        },
+        {
+          "calculate": "datum.reg_type_en === 'Existing Properties' ? datum.median_price : null",
+          "as": "existing_value"
+        },
+        {
+          "calculate": "datum.reg_type_en === 'Off-Plan Properties' ? datum.median_price : null",
+          "as": "offplan_value"
+        },
+        {
+          "joinaggregate": [
+            {
+              "op": "max",
+              "field": "existing_value",
+              "as": "existing_median"
+            },
+            {
+              "op": "max",
+              "field": "offplan_value",
+              "as": "offplan_median"
+            }
+          ]
+        },
+        {
+          "calculate": "isValid(datum.existing_median) && isValid(datum.offplan_median) && datum.existing_median > 0 ? 100 * (datum.offplan_median - datum.existing_median) / datum.existing_median : null",
+          "as": "gap_pct"
+        },
+        {
+          "calculate": "isValid(datum.gap_pct) ? 'Off-Plan ' + format(datum.gap_pct, '+.1f') + '% vs Existing' : 'Select All registrations to compare'",
+          "as": "comparison_label"
+        },
+        {
+          "calculate": "datum.reg_type_en === 'Existing Properties' ? 'Existing' : 'Off-Plan'",
+          "as": "short_reg_label"
+        },
+        {
+          "calculate": "datum.reg_type_en === 'Existing Properties' ? 0 : 1",
+          "as": "reg_type_order"
+        }
+      ],
+      "layer": [
+        {
+          "mark": {
+            "type": "line",
+            "color": "#64748b",
+            "strokeWidth": 5,
+            "opacity": 0.85
+          },
+          "encoding": {
+            "x": {
+              "field": "median_price",
+              "type": "quantitative",
+              "title": "Median price per m² (AED)",
+              "scale": {
+                "domain": [
+                  0,
+                  60000
+                ]
+              },
+              "axis": {
+                "format": ",.0f"
+              }
+            },
+            "y": {
+              "field": "short_reg_label",
+              "type": "nominal",
+              "sort": [
+                "Existing",
+                "Off-Plan"
+              ],
+              "title": null,
+              "axis": {
+                "labelFontSize": 12,
+                "labelFontWeight": "bold",
+                "labelPadding": 8,
+                "ticks": false,
+                "domain": false,
+                "labelColor": {
+                  "expr": "datum.value === 'Existing' ? '#2563eb' : '#f97316'"
+                }
+              },
+              "scale": {
+                "domain": [
+                  "Existing",
+                  "Off-Plan"
+                ],
+                "padding": 0.65
+              }
+            },
+            "order": {
+              "field": "reg_type_order",
+              "type": "quantitative"
+            }
+          }
+        },
+        {
+          "mark": {
+            "type": "circle",
+            "filled": true,
+            "size": 1000,
+            "opacity": 0.97
+          },
+          "encoding": {
+            "x": {
+              "field": "median_price",
+              "type": "quantitative",
+              "title": "Median price per m² (AED)",
+              "scale": {
+                "domain": [
+                  0,
+                  60000
+                ]
+              },
+              "axis": {
+                "format": ",.0f"
+              }
+            },
+            "y": {
+              "field": "short_reg_label",
+              "type": "nominal",
+              "sort": [
+                "Existing",
+                "Off-Plan"
+              ],
+              "title": null,
+              "axis": {
+                "labelFontSize": 12,
+                "labelFontWeight": "bold",
+                "labelPadding": 8,
+                "ticks": false,
+                "domain": false,
+                "labelColor": {
+                  "expr": "datum.value === 'Existing' ? '#2563eb' : '#f97316'"
+                }
+              },
+              "scale": {
+                "domain": [
+                  "Existing",
+                  "Off-Plan"
+                ],
+                "padding": 0.65
+              }
+            },
+            "color": {
+              "field": "reg_type_en",
+              "type": "nominal",
+              "legend": null,
+              "scale": {
+                "domain": [
+                  "Existing Properties",
+                  "Off-Plan Properties"
+                ],
+                "range": [
+                  "#2563eb",
+                  "#f97316"
+                ]
+              }
+            },
+            "tooltip": [
+              {
+                "field": "reg_type_en",
+                "type": "nominal",
+                "title": "Registration Type"
+              },
+              {
+                "field": "median_price",
+                "type": "quantitative",
+                "title": "Median price (AED/m²)",
+                "format": ",.0f"
+              },
+              {
+                "field": "transaction_count",
+                "type": "quantitative",
+                "title": "Transactions",
+                "format": ","
+              },
+              {
+                "field": "gap_pct",
+                "type": "quantitative",
+                "title": "Off-Plan vs Existing (%)",
+                "format": "+.1f"
+              }
+            ]
+          }
+        },
+        {
+          "mark": {
+            "type": "text",
+            "align": "center",
+            "baseline": "bottom",
+            "dy": -19,
+            "fontSize": 12,
+            "fontWeight": "bold"
+          },
+          "encoding": {
+            "x": {
+              "field": "median_price",
+              "type": "quantitative",
+              "title": "Median price per m² (AED)",
+              "scale": {
+                "domain": [
+                  0,
+                  60000
+                ]
+              },
+              "axis": {
+                "format": ",.0f"
+              }
+            },
+            "y": {
+              "field": "short_reg_label",
+              "type": "nominal",
+              "sort": [
+                "Existing",
+                "Off-Plan"
+              ],
+              "title": null,
+              "axis": {
+                "labelFontSize": 12,
+                "labelFontWeight": "bold",
+                "labelPadding": 8,
+                "ticks": false,
+                "domain": false,
+                "labelColor": {
+                  "expr": "datum.value === 'Existing' ? '#2563eb' : '#f97316'"
+                }
+              },
+              "scale": {
+                "domain": [
+                  "Existing",
+                  "Off-Plan"
+                ],
+                "padding": 0.65
+              }
+            },
+            "text": {
+              "field": "short_reg_label",
+              "type": "nominal"
+            },
+            "color": {
+              "field": "reg_type_en",
+              "type": "nominal",
+              "legend": null,
+              "scale": {
+                "domain": [
+                  "Existing Properties",
+                  "Off-Plan Properties"
+                ],
+                "range": [
+                  "#2563eb",
+                  "#f97316"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "mark": {
+            "type": "text",
+            "align": "left",
+            "dx": 24,
+            "baseline": "middle",
+            "fontSize": 14,
+            "fontWeight": "bold"
+          },
+          "encoding": {
+            "x": {
+              "field": "median_price",
+              "type": "quantitative",
+              "title": "Median price per m² (AED)",
+              "scale": {
+                "domain": [
+                  0,
+                  60000
+                ]
+              },
+              "axis": {
+                "format": ",.0f"
+              }
+            },
+            "y": {
+              "field": "short_reg_label",
+              "type": "nominal",
+              "sort": [
+                "Existing",
+                "Off-Plan"
+              ],
+              "title": null,
+              "axis": {
+                "labelFontSize": 12,
+                "labelFontWeight": "bold",
+                "labelPadding": 8,
+                "ticks": false,
+                "domain": false,
+                "labelColor": {
+                  "expr": "datum.value === 'Existing' ? '#2563eb' : '#f97316'"
+                }
+              },
+              "scale": {
+                "domain": [
+                  "Existing",
+                  "Off-Plan"
+                ],
+                "padding": 0.65
+              }
+            },
+            "text": {
+              "field": "median_price",
+              "type": "quantitative",
+              "format": ",.0f"
+            },
+            "color": {
+              "field": "reg_type_en",
+              "type": "nominal",
+              "legend": null,
+              "scale": {
+                "domain": [
+                  "Existing Properties",
+                  "Off-Plan Properties"
+                ],
+                "range": [
+                  "#2563eb",
+                  "#f97316"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "transform": [
+            {
+              "aggregate": [
+                {
+                  "op": "max",
+                  "field": "gap_pct",
+                  "as": "display_gap"
+                }
+              ]
+            },
+            {
+              "filter": "isValid(datum.display_gap)"
+            }
+          ],
+          "mark": {
+            "type": "text",
+            "align": "left",
+            "baseline": "top",
+            "fontSize": 14,
+            "fontWeight": "bold",
+            "color": "#f97316"
+          },
+          "encoding": {
+            "x": {
+              "value": 15
+            },
+            "y": {
+              "value": 8
+            },
+            "text": {
+              "value": "Off-Plan"
+            }
+          }
+        },
+        {
+          "transform": [
+            {
+              "aggregate": [
+                {
+                  "op": "max",
+                  "field": "gap_pct",
+                  "as": "display_gap"
+                }
+              ]
+            },
+            {
+              "filter": "isValid(datum.display_gap)"
+            },
+            {
+              "calculate": "format(datum.display_gap, '+.1f') + '% vs'",
+              "as": "gap_text"
+            }
+          ],
+          "mark": {
+            "type": "text",
+            "align": "left",
+            "baseline": "top",
+            "fontSize": 14,
+            "fontWeight": "bold",
+            "color": "#263849"
+          },
+          "encoding": {
+            "x": {
+              "value": 95
+            },
+            "y": {
+              "value": 8
+            },
+            "text": {
+              "field": "gap_text",
+              "type": "nominal"
+            }
+          }
+        },
+        {
+          "transform": [
+            {
+              "aggregate": [
+                {
+                  "op": "max",
+                  "field": "gap_pct",
+                  "as": "display_gap"
+                }
+              ]
+            },
+            {
+              "filter": "isValid(datum.display_gap)"
+            }
+          ],
+          "mark": {
+            "type": "text",
+            "align": "left",
+            "baseline": "top",
+            "fontSize": 14,
+            "fontWeight": "bold",
+            "color": "#2563eb"
+          },
+          "encoding": {
+            "x": {
+              "value": 191
+            },
+            "y": {
+              "value": 8
+            },
+            "text": {
+              "value": "Existing"
+            }
+          }
+        },
+        {
+          "transform": [
+            {
+              "aggregate": [
+                {
+                  "op": "max",
+                  "field": "gap_pct",
+                  "as": "display_gap"
+                }
+              ]
+            },
+            {
+              "filter": "!isValid(datum.display_gap)"
+            }
+          ],
+          "mark": {
+            "type": "text",
+            "align": "left",
+            "baseline": "top",
+            "fontSize": 13,
+            "fontWeight": "bold",
+            "color": "#263849"
+          },
+          "encoding": {
+            "x": {
+              "value": 15
+            },
+            "y": {
+              "value": 8
+            },
+            "text": {
+              "value": "Select All registrations to compare"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "spacing": 48,
+  "resolve": {
+    "scale": {
+      "color": "independent"
+    }
+  },
+  "config": {
+    "background": "white",
+    "view": {
+      "stroke": null
+    },
+    "axis": {
+      "labelFontSize": 14,
+      "titleFontSize": 16,
+      "gridColor": "#e5e7eb",
+      "labelPadding": 8,
+      "titlePadding": 12
+    },
+    "title": {
+      "fontSize": 20,
+      "color": "#1f2937"
+    }
+  }
+}
